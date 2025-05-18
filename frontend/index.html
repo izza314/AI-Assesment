@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat vs Dog Classifier</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <style>
+        .App {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+
+        .dropzone {
+            border: 2px dashed #cccccc;
+            border-radius: 4px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .dropzone.drag-active {
+            border-color: #2196f3;
+            background-color: rgba(33, 150, 243, 0.1);
+        }
+
+        .dropzone:hover {
+            border-color: #666;
+        }
+
+        .preview {
+            margin: 2rem 0;
+        }
+
+        .preview img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .result {
+            margin: 2rem 0;
+            padding: 1rem;
+            background-color: #e3f2fd;
+            border-radius: 8px;
+        }
+
+        .loading {
+            margin: 2rem 0;
+            color: #666;
+        }
+
+        .error {
+            margin: 2rem 0;
+            padding: 1rem;
+            background-color: #ffebee;
+            border-radius: 8px;
+            color: #c62828;
+        }
+
+        .button {
+            background-color: #2196f3;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 1rem 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #1976d2;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        function App() {
+            const [image, setImage] = React.useState(null);
+            const [preview, setPreview] = React.useState(null);
+            const [prediction, setPrediction] = React.useState(null);
+            const [loading, setLoading] = React.useState(false);
+            const [error, setError] = React.useState(null);
+            const [isDragActive, setIsDragActive] = React.useState(false);
+            const fileInputRef = React.useRef(null);
+
+            const processImage = async (file) => {
+                if (!file) return;
+
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    setError('Please upload an image file');
+                    return;
+                }
+
+                // Create preview
+                setPreview(URL.createObjectURL(file));
+                setLoading(true);
+                setPrediction(null);
+                setError(null);
+
+                // Create form data
+                const formData = new FormData();
+                formData.append('image', file);
+
+                try {
+                    const response = await fetch('http://localhost:5000/predict', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Prediction failed');
+                    }
+
+                    const result = await response.json();
+                    setPrediction(result);
+                } catch (err) {
+                    console.error(err);
+                    setError('Error processing image. Please try again.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleDrop = (e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files[0];
+                processImage(file);
+            };
+
+            const handleDragOver = (e) => {
+                e.preventDefault();
+                setIsDragActive(true);
+            };
+
+            const handleDragLeave = (e) => {
+                e.preventDefault();
+                setIsDragActive(false);
+            };
+
+            const handleFileInput = (e) => {
+                const file = e.target.files[0];
+                processImage(file);
+            };
+
+            const handleClick = () => {
+                fileInputRef.current.click();
+            };
+
+            return (
+                <div className="App">
+                    <h1>Cat vs Dog Classifier</h1>
+                    <p>Upload or drag & drop an image of a cat or dog to classify it</p>
+
+                    <div
+                        className={`dropzone ${isDragActive ? 'drag-active' : ''}`}
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onClick={handleClick}
+                    >
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileInput}
+                            style={{ display: 'none' }}
+                        />
+                        <p>Click to upload or drag and drop an image here</p>
+                        <button className="button">Select Image</button>
+                    </div>
+
+                    {error && (
+                        <div className="error">
+                            {error}
+                        </div>
+                    )}
+
+                    {preview && (
+                        <div className="preview">
+                            <img src={preview} alt="Preview" />
+                        </div>
+                    )}
+
+                    {loading && (
+                        <div className="loading">
+                            Analyzing image...
+                        </div>
+                    )}
+
+                    {prediction && (
+                        <div className="result">
+                            <h2>Result: {prediction.prediction}</h2>
+                            <p>Confidence: {(prediction.confidence * 100).toFixed(2)}%</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>

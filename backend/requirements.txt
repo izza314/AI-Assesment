@@ -1,0 +1,5 @@
+flask
+flask-cors
+tensorflow-hub
+numpy
+pillow
